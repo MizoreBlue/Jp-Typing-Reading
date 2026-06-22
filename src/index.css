@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+
+  body {
+    @apply bg-cream-50 text-ink-900;
+  }
+
+  /* Ruby/Furigana styling */
+  ruby {
+    @apply relative;
+  }
+
+  rt {
+    @apply text-xs text-sakura-400 font-normal absolute left-1/2 -translate-x-1/2 -top-1;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded hover:bg-gray-400;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-sakura-400/30 text-ink-900;
+  }
+}
+
+@layer components {
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@layer utilities {
+  .animate-bounce-correct {
+    animation: bounce-correct 0.3s ease-out;
+  }
+
+  .animate-shake-error {
+    animation: shake-error 0.3s ease-out;
+  }
+
+  @keyframes bounce-correct {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  @keyframes shake-error {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+}
