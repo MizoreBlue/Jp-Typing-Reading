@@ -98,7 +98,7 @@ export function romajiToHiraganaConvert(romaji: string): string {
     if (
       i + 1 < input.length &&
       input[i] === input[i + 1] &&
-      'ktpshcmyrgwzdbp'.includes(input[i])
+      'kstpfhcr'.includes(input[i])
     ) {
       result += 'っ';
       i++;
@@ -142,3 +142,90 @@ export function isValidRomaji(char: string): boolean {
   const c = char.toLowerCase();
   return /^[a-z]$/.test(c) || c === '-';
 }
+
+const hiraganaToRomajiMap: Record<string, string> = {};
+
+export function toRomaji(hiraganaText: string): string {
+  let result = '';
+  let i = 0;
+
+  if (Object.keys(hiraganaToRomajiMap).length === 0) {
+    // 1. 反转拗音 (youon)
+    for (const [romaji, hiragana] of Object.entries(youon)) {
+      const current = hiraganaToRomajiMap[hiragana];
+      if (!current || romaji.length < current.length) {
+        hiraganaToRomajiMap[hiragana] = romaji;
+      }
+    }
+
+    // 2. 赫本式罗马音首选规则
+    const preferredRomaji: Record<string, string> = {
+      'し': 'shi',
+      'ち': 'chi',
+      'つ': 'tsu',
+      'じ': 'ji',
+      'ぢ': 'ji',
+      'づ': 'zu',
+      'ふ': 'fu',
+      'を': 'wo',
+      'ん': 'n',
+    };
+
+    for (const [romaji, hiragana] of Object.entries(romajiToHiragana)) {
+      if (preferredRomaji[hiragana]) {
+        hiraganaToRomajiMap[hiragana] = preferredRomaji[hiragana];
+      } else {
+        const current = hiraganaToRomajiMap[hiragana];
+        if (!current || romaji.length < current.length) {
+          hiraganaToRomajiMap[hiragana] = romaji;
+        }
+      }
+    }
+  }
+
+  while (i < hiraganaText.length) {
+    // 1. 尝试匹配 2 个字符的平假名（拗音，如 "きゃ"）
+    if (i + 1 < hiraganaText.length) {
+      const duo = hiraganaText.slice(i, i + 2);
+      if (hiraganaToRomajiMap[duo]) {
+        result += hiraganaToRomajiMap[duo];
+        i += 2;
+        continue;
+      }
+    }
+
+    // 2. 特殊处理促音（っ）
+    if (hiraganaText[i] === 'っ') {
+      if (i + 1 < hiraganaText.length) {
+        const nextChar = hiraganaText[i + 1];
+        let nextRomaji = '';
+        if (i + 2 < hiraganaText.length && hiraganaToRomajiMap[hiraganaText.slice(i + 1, i + 3)]) {
+          nextRomaji = hiraganaToRomajiMap[hiraganaText.slice(i + 1, i + 3)];
+        } else {
+          nextRomaji = hiraganaToRomajiMap[nextChar] || '';
+        }
+
+        if (nextRomaji && /^[a-z]/.test(nextRomaji)) {
+          result += nextRomaji[0];
+          i++; // 消耗促音 'っ'
+          continue;
+        }
+      }
+      result += 'tsu';
+      i++;
+      continue;
+    }
+
+    // 3. 匹配单个平假名/片假名字符
+    const single = hiraganaText[i];
+    if (hiraganaToRomajiMap[single]) {
+      result += hiraganaToRomajiMap[single];
+    } else {
+      result += single; // 保留标点符号、空格等
+    }
+    i++;
+  }
+
+  return result;
+}
+

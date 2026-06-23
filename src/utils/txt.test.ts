@@ -27,12 +27,11 @@ describe('parseTXTToParagraphs', () => {
     expect(paragraphs[1]).toBe('另一段正文。');
   });
 
-  it('should filter out number-only paragraphs', () => {
+  it('should filter out number-only paragraphs and chapter indexes', () => {
     const text = '第一章\n\n123\n\n456.789\n\n正文开始。';
     const paragraphs = parseTXTToParagraphs(text);
-    expect(paragraphs).toHaveLength(2);
-    expect(paragraphs[0]).toBe('第一章');
-    expect(paragraphs[1]).toBe('正文开始。');
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0]).toBe('正文开始。');
   });
 
   it('should handle Japanese text correctly', () => {
@@ -86,10 +85,10 @@ describe('TXTParagraphMatcher', () => {
 
   it('should initialize with parsed paragraphs', () => {
     const matcher = new TXTParagraphMatcher(jpText, zhText);
-    expect(matcher.getJpParagraphCount()).toBe(3);
-    expect(matcher.getZhParagraphCount()).toBe(3);
-    expect(matcher.getJpParagraphs()).toHaveLength(3);
-    expect(matcher.getZhParagraphs()).toHaveLength(3);
+    expect(matcher.getJpParagraphCount()).toBe(2);
+    expect(matcher.getZhParagraphCount()).toBe(2);
+    expect(matcher.getJpParagraphs()).toHaveLength(2);
+    expect(matcher.getZhParagraphs()).toHaveLength(2);
   });
 
   it('should return empty alignments for empty input', () => {

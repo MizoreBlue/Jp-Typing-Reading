@@ -40,46 +40,61 @@ export default function AlignPage() {
   }, [manualAlignments]);
 
   const alignmentMap = useMemo(() => {
-    const map = new Map<number, number>();
-    manualAlignments.forEach((a) => map.set(a.jpIndex, a.zhIndex));
+    const map = new Map<number, number[]>();
+    manualAlignments.forEach((a) => {
+      if (!map.has(a.jpIndex)) map.set(a.jpIndex, []);
+      if (!map.get(a.jpIndex)!.includes(a.zhIndex)) {
+        map.get(a.jpIndex)!.push(a.zhIndex);
+      }
+    });
     return map;
   }, [manualAlignments]);
 
   const zhReverseMap = useMemo(() => {
-    const map = new Map<number, number>();
-    manualAlignments.forEach((a) => map.set(a.zhIndex, a.jpIndex));
+    const map = new Map<number, number[]>();
+    manualAlignments.forEach((a) => {
+      if (!map.has(a.zhIndex)) map.set(a.zhIndex, []);
+      if (!map.get(a.zhIndex)!.includes(a.jpIndex)) {
+        map.get(a.zhIndex)!.push(a.jpIndex);
+      }
+    });
     return map;
   }, [manualAlignments]);
 
   const handleJpClick = useCallback((index: number) => {
     if (skippedJp.includes(index)) return;
-    setSelectedJp(index);
-    setSelectedZh(null);
-  }, [skippedJp]);
+
+    if (selectedZh !== null) {
+      const exists = manualAlignments.some(a => a.jpIndex === index && a.zhIndex === selectedZh);
+      if (exists) {
+        setManualAlignments(manualAlignments.filter(a => !(a.jpIndex === index && a.zhIndex === selectedZh)));
+      } else {
+        setManualAlignments([...manualAlignments, { jpIndex: index, zhIndex: selectedZh, score: 100 }]);
+      }
+    } else {
+      setSelectedJp(index === selectedJp ? null : index);
+      setSelectedZh(null);
+    }
+  }, [skippedJp, selectedJp, selectedZh, manualAlignments]);
 
   const handleZhClick = useCallback((index: number) => {
     if (skippedZh.includes(index)) return;
 
     if (selectedJp !== null) {
-      const existing = manualAlignments.find((a) => a.jpIndex === selectedJp);
-      if (existing) {
-        setManualAlignments(
-          manualAlignments.map((a) =>
-            a.jpIndex === selectedJp ? { ...a, zhIndex: index, score: 100 } : a
-          )
-        );
+      const exists = manualAlignments.some(a => a.jpIndex === selectedJp && a.zhIndex === index);
+      if (exists) {
+        setManualAlignments(manualAlignments.filter(a => !(a.jpIndex === selectedJp && a.zhIndex === index)));
       } else {
         setManualAlignments([...manualAlignments, { jpIndex: selectedJp, zhIndex: index, score: 100 }]);
       }
-      setSelectedJp(null);
-      setSelectedZh(null);
     } else {
-      setSelectedZh(index);
+      setSelectedZh(index === selectedZh ? null : index);
+      setSelectedJp(null);
     }
-  }, [selectedJp, manualAlignments, skippedZh]);
+  }, [skippedZh, selectedJp, selectedZh, manualAlignments]);
 
-  const handleRemoveAlignment = useCallback((jpIndex: number) => {
-    setManualAlignments(manualAlignments.filter((a) => a.jpIndex !== jpIndex));
+  const handleRemoveSpecificAlignment = useCallback((jpIndex: number, zhIndex: number) => {
+    setManualAlignments(manualAlignments.filter((a) => !(a.jpIndex === jpIndex && a.zhIndex === zhIndex)));
   }, [manualAlignments]);
 
   const handleSkipJp = useCallback((index: number) => {
@@ -230,14 +245,15 @@ export default function AlignPage() {
       </header>
 
       <div className="container mx-auto px-6 py-4">
-        <div className="bg-indigo-100 rounded-lg p-4 text-sm text-indigo-900">
-          <p><strong>操作说明：</strong></p>
-          <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>点击左侧日语段落，再点击右侧对应的中文段落进行关联</li>
-            <li>点击已有对齐的段落可以解除关联</li>
-            <li>点击 <SkipForward className="inline w-4 h-4" /> 按钮可以跳过该段落（标记为非正文）</li>
-            <li>点击 <ChevronDown className="inline w-4 h-4" /> 按钮可以展开/折叠段落内容</li>
-            <li>点击「自动对齐」按钮使用算法自动匹配段落</li>
+        <div className="bg-indigo-100 rounded-lg p-4 text-sm text-indigo-900 shadow-sm border border-indigo-200">
+          <p className="font-semibold text-base">💡 双语对齐与多对多关联引导说明：</p>
+          <ul className="list-disc list-inside mt-2 space-y-1.5 text-sm">
+            <li><strong>单对单关联：</strong>选中一侧的段落（高亮为粉色），点击另一侧对应的段落即可。</li>
+            <li><strong>一对多 / 多对多关联：</strong>在选中某段落（例如左侧日语段落 5）后，可以<strong>连续点击右侧多个中文段落</strong>，它们都会被绑定至该日语段落！选中一个中文段落绑定多个日语段落亦然。</li>
+            <li><strong>取消选择：</strong>再次点击已选中的高亮段落即可取消其选中状态。</li>
+            <li><strong>精确解除绑定：</strong>每个已关联的标签右侧均有 <X className="inline w-3 h-3" /> 按钮，点击即可直接删除该特定对准关系。</li>
+            <li><strong>过滤占位行：</strong>如果看到章节标题或空白，点击 <SkipForward className="inline w-4 h-4" /> 按钮可以跳过，被跳过的段落将不再参与对齐。</li>
+            <li><strong>内容展开：</strong>如果文本较长，可点击 <ChevronDown className="inline w-4 h-4" /> 展开完整段落内容。</li>
           </ul>
         </div>
       </div>
@@ -276,7 +292,6 @@ export default function AlignPage() {
                   const isSelected = selectedJp === index;
                   const isSkipped = skippedJp.includes(index);
                   const isExpanded = expandedJp.has(index);
-                  const zhMatch = alignmentMap.get(index);
 
                   return (
                     <div
@@ -324,18 +339,26 @@ export default function AlignPage() {
                             </button>
                           ) : null}
                           {isAligned && (
-                            <div className="flex items-center gap-1 text-green-600">
-                              <Check className="w-4 h-4" />
-                              <span className="text-xs">→ {zhMatch! + 1}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveAlignment(index);
-                                }}
-                                className="ml-1 text-red-500 hover:text-red-700"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                            <div className="flex flex-wrap items-center gap-1.5 text-green-600">
+                              <Check className="w-4 h-4 shrink-0" />
+                              {alignmentMap.get(index)?.map((zhIdx) => (
+                                <span
+                                  key={zhIdx}
+                                  className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs shrink-0 font-sans"
+                                >
+                                  → {zhIdx + 1}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSpecificAlignment(index, zhIdx);
+                                    }}
+                                    className="ml-1 text-red-500 hover:text-red-700 font-bold"
+                                    title="解除此关联"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
                             </div>
                           )}
                           <button
@@ -427,7 +450,27 @@ export default function AlignPage() {
                             </button>
                           ) : null}
                           {isMatched && (
-                            <GripVertical className="w-4 h-4 text-green-600" />
+                            <div className="flex flex-wrap items-center gap-1.5 text-indigo-600">
+                              <GripVertical className="w-4 h-4 shrink-0" />
+                              {zhReverseMap.get(index)?.map((jpIdx) => (
+                                <span
+                                  key={jpIdx}
+                                  className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-xs shrink-0 font-sans"
+                                >
+                                  ← {jpIdx + 1}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSpecificAlignment(jpIdx, index);
+                                    }}
+                                    className="ml-1 text-red-500 hover:text-red-700 font-bold"
+                                    title="解除此关联"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
                           )}
                           <button
                             onClick={(e) => {

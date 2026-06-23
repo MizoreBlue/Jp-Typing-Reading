@@ -18,7 +18,6 @@ export default function VocabPage() {
       if (!searchQuery) return true;
       return (
         word.word.includes(searchQuery) ||
-        word.reading.includes(searchQuery) ||
         word.reading.includes(searchQuery)
       );
     })
@@ -177,12 +176,13 @@ export default function VocabPage() {
                         <span className="text-2xl font-bold text-indigo-900">
                           {word.word}
                         </span>
-                        {isKanji(word.word) && (
+                        {isKanji(word.word) ? (
                           <span className="text-lg text-sakura-400">
                             【{word.reading}】
                           </span>
+                        ) : (
+                          <span className="text-sm text-ink-700">{word.reading}</span>
                         )}
-                        <span className="text-sm text-ink-700">{word.reading}</span>
                       </div>
 
                       <div className="flex items-center gap-4 text-sm text-ink-700">

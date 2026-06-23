@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { romajiToHiraganaConvert, isValidRomaji } from './romaji';
+import { romajiToHiraganaConvert, isValidRomaji, toRomaji } from './romaji';
 
 describe('romajiToHiraganaConvert', () => {
   it('should convert basic vowels', () => {
@@ -58,3 +58,27 @@ describe('isValidRomaji', () => {
     expect(isValidRomaji('あ')).toBe(false);
   });
 });
+
+describe('toRomaji', () => {
+  it('should convert basic hiragana to romaji', () => {
+    expect(toRomaji('あいうえお')).toBe('aiueo');
+    expect(toRomaji('かきくけこ')).toBe('kakikukeko');
+  });
+
+  it('should convert youon to romaji', () => {
+    expect(toRomaji('きゃきゅきょ')).toBe('kyakyukyo');
+    expect(toRomaji('しゃしゅしょ')).toBe('shashusho');
+  });
+
+  it('should convert sokuon to romaji', () => {
+    expect(toRomaji('かった')).toBe('katta');
+    expect(toRomaji('がっこう')).toBe('gakkou');
+    expect(toRomaji('さっし')).toBe('sasshi');
+  });
+
+  it('should convert mixed text with punctuation', () => {
+    expect(toRomaji('こんにちは。')).toBe('konnichiha。');
+    expect(toRomaji('わたしはがくせいです！')).toBe('watashihagakuseidesu！');
+  });
+});
+

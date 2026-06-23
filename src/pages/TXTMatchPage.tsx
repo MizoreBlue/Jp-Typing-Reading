@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, FileText, Check, X, SkipForward, ChevronDown, ChevronUp, AlertCircle, Download, RotateCcw, BookOpen } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Check, X, SkipForward, ChevronDown, ChevronUp, AlertCircle, Download, RotateCcw, BookOpen, GripVertical } from 'lucide-react';
 import { useBookStore } from '@/stores/bookStore';
 import { TXTParagraphMatcher, downloadAsTXT, readTXTFileWithEncoding, exportAlignmentsToJSON, createBookFromTXT } from '@/utils/txt';
 import type { AlignmentPair } from '@/types';
@@ -199,14 +199,24 @@ export default function TXTMatchPage() {
   }, [alignments]);
 
   const alignmentMap = useMemo(() => {
-    const map = new Map<number, number>();
-    alignments.forEach((a) => map.set(a.jpIndex, a.zhIndex));
+    const map = new Map<number, number[]>();
+    alignments.forEach((a) => {
+      if (!map.has(a.jpIndex)) map.set(a.jpIndex, []);
+      if (!map.get(a.jpIndex)!.includes(a.zhIndex)) {
+        map.get(a.jpIndex)!.push(a.zhIndex);
+      }
+    });
     return map;
   }, [alignments]);
 
   const zhReverseMap = useMemo(() => {
-    const map = new Map<number, number>();
-    alignments.forEach((a) => map.set(a.zhIndex, a.jpIndex));
+    const map = new Map<number, number[]>();
+    alignments.forEach((a) => {
+      if (!map.has(a.zhIndex)) map.set(a.zhIndex, []);
+      if (!map.get(a.zhIndex)!.includes(a.jpIndex)) {
+        map.get(a.zhIndex)!.push(a.jpIndex);
+      }
+    });
     return map;
   }, [alignments]);
 
@@ -224,38 +234,36 @@ export default function TXTMatchPage() {
     if (skippedJp.has(index)) return;
 
     if (selectedZh !== null) {
-      // 已选中中文，点击日文完成配对
-      const nextAlignments = alignments.filter(
-        (a) => a.jpIndex !== index && a.zhIndex !== selectedZh
-      );
-      setAlignments([...nextAlignments, { jpIndex: index, zhIndex: selectedZh, score: 100 }]);
-      setSelectedJp(null);
-      setSelectedZh(null);
+      const exists = alignments.some(a => a.jpIndex === index && a.zhIndex === selectedZh);
+      if (exists) {
+        setAlignments(alignments.filter(a => !(a.jpIndex === index && a.zhIndex === selectedZh)));
+      } else {
+        setAlignments([...alignments, { jpIndex: index, zhIndex: selectedZh, score: 100 }]);
+      }
     } else {
-      setSelectedJp(index);
+      setSelectedJp(index === selectedJp ? null : index);
       setSelectedZh(null);
     }
-  }, [skippedJp, selectedZh, alignments]);
+  }, [skippedJp, selectedJp, selectedZh, alignments]);
 
   const handleZhClick = useCallback((index: number) => {
     if (skippedZh.has(index)) return;
 
     if (selectedJp !== null) {
-      // 已选中日文，点击中文完成配对
-      const nextAlignments = alignments.filter(
-        (a) => a.jpIndex !== selectedJp && a.zhIndex !== index
-      );
-      setAlignments([...nextAlignments, { jpIndex: selectedJp, zhIndex: index, score: 100 }]);
-      setSelectedJp(null);
-      setSelectedZh(null);
+      const exists = alignments.some(a => a.jpIndex === selectedJp && a.zhIndex === index);
+      if (exists) {
+        setAlignments(alignments.filter(a => !(a.jpIndex === selectedJp && a.zhIndex === index)));
+      } else {
+        setAlignments([...alignments, { jpIndex: selectedJp, zhIndex: index, score: 100 }]);
+      }
     } else {
-      setSelectedZh(index);
+      setSelectedZh(index === selectedZh ? null : index);
       setSelectedJp(null);
     }
-  }, [skippedZh, selectedJp, alignments]);
+  }, [skippedZh, selectedJp, selectedZh, alignments]);
 
-  const handleRemoveAlignment = useCallback((jpIndex: number) => {
-    setAlignments(alignments.filter((a) => a.jpIndex !== jpIndex));
+  const handleRemoveSpecificAlignment = useCallback((jpIndex: number, zhIndex: number) => {
+    setAlignments(alignments.filter((a) => !(a.jpIndex === jpIndex && a.zhIndex === zhIndex)));
   }, [alignments]);
 
   const handleSkipJp = useCallback((index: number) => {
@@ -547,12 +555,14 @@ export default function TXTMatchPage() {
         {/* 匹配结果 */}
         {matcher && (
           <>
-            <div className="bg-indigo-100 rounded-lg p-4 mb-6">
-              <p className="text-sm text-indigo-900">
-                <strong>操作说明：</strong>先点击一侧段落，再点击另一侧对应段落即可完成关联（顺序不限）。
-                点击 <SkipForward className="inline w-4 h-4" /> 按钮可以跳过该段落。
-                完成部分匹配后，即可点击「保存并开始阅读」进入打字练习。
-              </p>
+            <div className="bg-indigo-100 rounded-lg p-4 mb-6 shadow-sm border border-indigo-200">
+              <p className="font-semibold text-base text-indigo-900">💡 双语对齐与多对多关联引导说明：</p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-indigo-850">
+                <li><strong>单对单关联：</strong>先点击一侧段落（高亮为粉色），再点击另一侧对应段落。</li>
+                <li><strong>一对多 / 多对多关联：</strong>在选中某段落（例如左侧日语段落 5）后，可以<strong>连续点击右侧多个中文段落</strong>，它们都会被绑定至该日语段落！选中一个中文段落绑定多个日语段落亦然。</li>
+                <li><strong>精确解除绑定：</strong>每个已关联的标签右侧均有 <X className="inline w-3 h-3" /> 按钮，点击即可直接删除该特定对准关系。</li>
+                <li><strong>过滤章节标题：</strong>如果有不需要的段落，点击 <SkipForward className="inline w-4 h-4" /> 按钮即可跳过。</li>
+              </ul>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6 pb-8">
@@ -567,7 +577,6 @@ export default function TXTMatchPage() {
                     const isSelected = selectedJp === index;
                     const isSkipped = skippedJp.has(index);
                     const isExpanded = expandedJp.has(index);
-                    const zhMatch = alignmentMap.get(index);
 
                     return (
                       <div
@@ -603,19 +612,27 @@ export default function TXTMatchPage() {
                               </button>
                             )}
                             {isAligned && (
-                              <div className="flex items-center gap-1 text-green-600">
-                                <Check className="w-4 h-4" />
-                                <span className="text-xs">→ {zhMatch! + 1}</span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemoveAlignment(index);
-                                  }}
-                                  className="ml-1 text-red-500 hover:text-red-700 p-1"
+                            <div className="flex flex-wrap items-center gap-1.5 text-green-600">
+                              <GripVertical className="w-4 h-4 shrink-0" />
+                              {alignmentMap.get(index)?.map((zhIdx) => (
+                                <span
+                                  key={zhIdx}
+                                  className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs shrink-0 font-sans"
                                 >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
+                                  → {zhIdx + 1}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSpecificAlignment(index, zhIdx);
+                                    }}
+                                    className="ml-1 text-red-500 hover:text-red-700 font-bold"
+                                    title="解除此关联"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
                             )}
                             <button
                               onClick={(e) => {
@@ -683,7 +700,27 @@ export default function TXTMatchPage() {
                               </button>
                             )}
                             {isMatched && (
-                              <Check className="w-4 h-4 text-green-600" />
+                            <div className="flex flex-wrap items-center gap-1.5 text-indigo-600">
+                              <GripVertical className="w-4 h-4 shrink-0" />
+                              {zhReverseMap.get(index)?.map((jpIdx) => (
+                                <span
+                                  key={jpIdx}
+                                  className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-xs shrink-0 font-sans"
+                                >
+                                  ← {jpIdx + 1}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSpecificAlignment(jpIdx, index);
+                                    }}
+                                    className="ml-1 text-red-500 hover:text-red-700 font-bold"
+                                    title="解除此关联"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
                             )}
                             <button
                               onClick={(e) => {

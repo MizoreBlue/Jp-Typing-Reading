@@ -65,12 +65,16 @@ export const useVocabStore = create<VocabStore>()(
       },
 
       toggleBookmark: (id) => {
-        const { bookmarkedWords } = get();
-        if (bookmarkedWords.includes(id)) {
-          set({ bookmarkedWords: bookmarkedWords.filter(b => b !== id) });
-        } else {
-          set({ bookmarkedWords: [...bookmarkedWords, id] });
-        }
+        const { wrongWords, bookmarkedWords } = get();
+        const nowBookmarked = !bookmarkedWords.includes(id);
+        set({
+          bookmarkedWords: nowBookmarked
+            ? [...bookmarkedWords, id]
+            : bookmarkedWords.filter((b) => b !== id),
+          wrongWords: wrongWords.map((w) =>
+            w.id === id ? { ...w, bookmarked: nowBookmarked } : w
+          ),
+        });
       },
 
       exportToCSV: () => {

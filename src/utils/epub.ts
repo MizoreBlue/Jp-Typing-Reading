@@ -59,7 +59,7 @@ function shouldSkipContent(contentType: ContentType): boolean {
   return contentType === ContentType.IMAGE || contentType === ContentType.TOC;
 }
 
-function resolveEPUBPath(opfDir: string, href: string): string {
+export function resolveEPUBPath(opfDir: string, href: string): string {
   const parts = (opfDir ? `${opfDir}/${href}` : href).split('/');
   const resolved: string[] = [];
   for (const part of parts) {
@@ -144,7 +144,7 @@ async function extractChaptersFromFiles(zip: JSZip): Promise<Chapter[]> {
   return chapters;
 }
 
-function extractXmlValue(xml: string, tag: string): string | null {
+export function extractXmlValue(xml: string, tag: string): string | null {
   const match = xml.match(new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`));
   return match ? match[1].trim() : null;
 }
@@ -217,7 +217,7 @@ async function extractChapters(
   return chapters;
 }
 
-function extractChapterTitle(html: string): string | null {
+export function extractChapterTitle(html: string): string | null {
   const titleMatch = html.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
   if (titleMatch) {
     return titleMatch[1].trim();
@@ -231,7 +231,7 @@ function extractChapterTitle(html: string): string | null {
   return null;
 }
 
-function extractTextFromHtml(html: string): string {
+export function extractTextFromHtml(html: string): string {
   let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
   text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
@@ -259,7 +259,7 @@ function extractTextFromHtml(html: string): string {
   return text;
 }
 
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
   const entities: Record<string, string> = {
     '&nbsp;': ' ',
     '&amp;': '&',
@@ -397,14 +397,36 @@ function decodeHtmlEntities(text: string): string {
   return result;
 }
 
+export function cleanContentText(text: string): string {
+  let cleaned = text;
+
+  // 移除格式占位符，如 [图片], [插图], 【图片】, 【插图】
+  cleaned = cleaned.replace(/\[\s*(?:图片|插图|图|image|img|photo|file)[^\]]*\]/gi, '');
+  cleaned = cleaned.replace(/【\s*(?:图片|插图|图|image|img|photo|file)[^】]*】/gi, '');
+  cleaned = cleaned.replace(/（\s*(?:图片|插图|图|image|img|photo|file)[^）]*）/gi, '');
+  cleaned = cleaned.replace(/\(\s*(?:图片|插图|图|image|img|photo|file)[^\)]*\)/gi, '');
+
+  // 移除基本 HTML 标签残留（如果有的话）
+  cleaned = cleaned.replace(/<[^>]+>/g, '');
+
+  return cleaned.trim();
+}
+
 export function splitToParagraphs(text: string): string[] {
+  const CHAPTER_INDEX_REGEX = /^(?:第?\s*[0-9一二三四五六七八九十百千万]+\s*[章节话折卷部部编]|^Chapter\s*[0-9IVXLCDMivxlcdm]+|^CHAPTER\s*[0-9IVXLCDMivxlcdm]+|^[0-9IVXLCDMivxlcdm]+\s*$|^序章|^终章|^前言|^后记|^插图|^插画|^[=+\-*]{3,})/i;
+
   const paragraphs = text
     .split(/\n{2,}/)
-    .map(p => p.trim())
+    .map(p => cleanContentText(p))
     .filter(p => p.length > 0);
 
   return paragraphs.filter(paragraph => {
-    if (/^[。、，！？；：\.\,\!\?\;\:\-\(\)\[\]【】「」『』《》<>『』「」（）＜＞＋－＝＿＄％＆＠＃￥]+$/.test(paragraph)) {
+    // 过滤章节标题/章节索引等行
+    if (CHAPTER_INDEX_REGEX.test(paragraph)) {
+      return false;
+    }
+
+    if (/^[。、，！？；：\.\,\!\?\;\:\-\(\)\[\]【】「」『』《》<>（）＜＞＋－＝＿＄％＆＠＃￥]+$/.test(paragraph)) {
       return false;
     }
     

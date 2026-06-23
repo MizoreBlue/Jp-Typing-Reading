@@ -252,7 +252,7 @@ function extractFeatures(text: string): TextFeatures {
     } else if (/[\u30a0-\u30ff]/.test(char)) {
       katakanaCount++;
       hasKatakana = true;
-    } else if (/[。？！、，；：""''（）【】《》「」『』…—–・「」『』｛｝＜＞｟｠\.\,\!\?\;\:\(\)\[\]<>]/g.test(char)) {
+    } else if (/[。？！、，；：""''（）【】《》「」『』…—–・｛｝＜＞｟｠\.\,\!\?\;\:\(\)\[\]<>]/.test(char)) {
       punctuationCount++;
     } else if (/[\d]/.test(char)) {
       hasNumbers = true;
@@ -324,9 +324,9 @@ function calculatePunctuationScore(punct1: string[], punct2: string[]): number {
   let matches = 0;
 
   const punctuationMap: Record<string, string[]> = {
-    '。': ['。', '！', '！'],
+    '。': ['。', '！'],
     '？': ['？', '?'],
-    '！': ['！', '！'],
+    '！': ['！'],
     '、': ['、', '，'],
     '，': ['，', '、'],
     '；': ['；', ';'],
@@ -341,7 +341,7 @@ function calculatePunctuationScore(punct1: string[], punct2: string[]): number {
     '】': ['】', ')', '）'],
     '…': ['…', '...', '。。。'],
     '—': ['—', '–', '-'],
-    '・': ['・', '・', '、', '.'],
+    '・': ['・', '、', '.'],
     '｛': ['｛', '{'],
     '｝': ['｝', '}'],
     '＜': ['＜', '<'],
@@ -368,7 +368,7 @@ function calculatePunctuationScore(punct1: string[], punct2: string[]): number {
 }
 
 function extractPunctuation(text: string): string[] {
-  const punctRegex = /[。？！、，；：""''（）【】《》「」『』…—–・「」『』｛｝＜＞｟｠\.\,\!\?\;\:\(\)\[\]<>]/g;
+  const punctRegex = /[。？！、，；：""''（）【】《》「」『』…—–・｛｝＜＞｟｠\.\,\!\?\;\:\(\)\[\]<>]/g;
   const matches = text.match(punctRegex);
   return matches || [];
 }

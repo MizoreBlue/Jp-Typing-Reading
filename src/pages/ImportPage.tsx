@@ -67,7 +67,7 @@ export default function ImportPage() {
       const zhParagraphs = splitToParagraphs(zhBook.chapters[0]?.content || '');
 
       const alignments = alignParagraphs(jpParagraphs, zhParagraphs);
-      setAlignments(alignments);
+      await setAlignments(alignments);
 
       navigate('/align');
     } catch (err) {
@@ -224,9 +224,9 @@ export default function ImportPage() {
           </button>
           <button
             onClick={handleStartAlignment}
-            disabled={!jpFile || !zhFile || isLoading}
+            disabled={(!jpFile && !jpBook) || (!zhFile && !zhBook) || isLoading}
             className={`flex items-center gap-2 px-8 py-3 rounded-lg font-semibold transition-all ${
-              jpFile && zhFile && !isLoading
+              ((jpFile || jpBook) && (zhFile || zhBook) && !isLoading)
                 ? 'bg-indigo-900 text-white hover:bg-indigo-800'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
